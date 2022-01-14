@@ -219,7 +219,7 @@ namespace MinecraftAuthServer
                     }
                     catch (Exception) { }
                     Execute($@"tellraw {userStr} {{""text"":""You are registered"",""color"":""green""}}");
-                    WriteLine(($"{userStr}", Yellow), ($" registered succesfully", Green));
+                    WriteLine(($"{userStr}", Yellow), ($" registered successfully", Green));
                 }
                 else
                 {
@@ -233,7 +233,7 @@ namespace MinecraftAuthServer
                         }
                         catch (Exception) { }
                         Execute($@"tellraw {userStr} {{""text"":""You are logged in"",""color"":""green""}}");
-                        WriteLine(($"{userStr}", Yellow), ($" logged in succesfully", Green));
+                        WriteLine(($"{userStr}", Yellow), ($" logged in successfully", Green));
                     }
                     else
                     {
