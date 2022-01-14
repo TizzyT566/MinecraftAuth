@@ -91,7 +91,7 @@ namespace MinecraftAuthServer
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     Console.WriteLine("Only windows supported.");
-                    return;
+                    throw new PlatformNotSupportedException();
                 }
 
                 // look for latest java version
