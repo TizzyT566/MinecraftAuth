@@ -186,26 +186,38 @@ namespace MinecraftAuthServer
             {
                 StringRange userStr = data.RangeOf(Text("["), Any, Text(" INFO]: ")).Between(Text(" issued server command: /login "));
                 string user = userStr.ToString().ToLower();
+
                 SpinWait.SpinUntil(() => Interlocked.Exchange(ref profileLock, 1) == 0);
 
+                // Check if player profile exists
                 if (!profiles.ContainsKey(user))
                 {
-                    Kick(userStr, "Unexpected error, Username not found");
+                    Kick(userStr, "Unexpected error, Username not found, Try again later");
                     Interlocked.Exchange(ref profileLock, 0);
                     return true;
                 }
 
+                // Get player profile
                 Profile profile = profiles[user];
 
-                StringRange head = data.RangeOf(Text("["), Any, Text(" INFO]: "), Any, Text(" issued server command: /login "));
-                string passphrase = data[head.End..];
-                byte[] passBytes = passphrase.SHA512(System.Text.Encoding.UTF8);
-                if (passphrase.Length < 6)
+                // 
+                if (profile.position == null)
                 {
-                    Execute($@"tellraw {userStr} {{""text"":""<passphrase> at least 6 chars"",""color"":""red""}}");
+                    Tell(userStr, ("Unexpected error, Coordinates lost, Contact admin", TellRawColors.Red));
                     Interlocked.Exchange(ref profileLock, 0);
                     return true;
                 }
+
+                StringRange head = data.RangeOf(Text("["), Any, Text(" INFO]: "), Any, Text(" issued server command: /login "));
+                string? passphrase = data[head.End..];
+                if (passphrase == null || passphrase.Length < 6)
+                {
+                    Tell(userStr, ("<passphrase> at least 6 chars", TellRawColors.Red));
+                    Interlocked.Exchange(ref profileLock, 0);
+                    return true;
+                }
+                byte[] passBytes = passphrase.SHA512(System.Text.Encoding.UTF8);
+                passphrase = null;
 
                 // check passphrase
                 if (profile.passphrase == null)
@@ -219,7 +231,7 @@ namespace MinecraftAuthServer
                         crntToken?.Dispose();
                     }
                     catch (Exception) { }
-                    Execute($@"tellraw {userStr} {{""text"":""You are registered"",""color"":""green""}}");
+                    Tell(userStr, ("You are registered", TellRawColors.Green));
                     WriteLine(($"{userStr}", Yellow), ($" registered successfully", Green));
                 }
                 else
@@ -233,22 +245,16 @@ namespace MinecraftAuthServer
                             crntToken?.Dispose();
                         }
                         catch (Exception) { }
-                        Execute($@"tellraw {userStr} {{""text"":""You are logged in"",""color"":""green""}}");
+                        Tell(userStr, ("You are logged in", TellRawColors.Green));
                         WriteLine(($"{userStr}", Yellow), ($" logged in successfully", Green));
                     }
                     else
                     {
-                        Execute($@"tellraw {userStr} {{""text"":""Wrong passphrase"",""color"":""red""}}");
+                        Tell(userStr, ("Wrong passphrase", TellRawColors.Red));
                         WriteLine(($"{user} entered the wrong password:", Red), "\n", (profile.passphrase.HexString(), Green), "\n", (passBytes.HexString(), DarkRed));
                         Interlocked.Exchange(ref profileLock, 0);
                         return true;
                     }
-                }
-                if (profile.position == null)
-                {
-                    Kick(userStr, "Unexpected error, Position lost, Contact admin");
-                    Interlocked.Exchange(ref profileLock, 0);
-                    return true;
                 }
 
                 // teleport to prevLocation
@@ -337,7 +343,7 @@ namespace MinecraftAuthServer
 
                     double timeout = TimeSpan.FromSeconds(30).TotalMilliseconds;
                     string normalized = NormalizeMilliseconds(timeout);
-                    Execute($@"tellraw {userStr} [{{""text"":""Account registered"",""color"":""green""}},""\n"",{{""text"":""Login within {normalized}"",""color"":""green""}},""\n"",{{""text"":""/login <passphrase>"",""color"":""green""}}]");
+                    Tell(userStr, ("Account registered", TellRawColors.Green), "\n", ($"Login within {normalized}", TellRawColors.Green), "\n", ("/login <passphrase>", TellRawColors.Green));
 
                     Task.Run(async () =>
                     {
@@ -391,7 +397,7 @@ namespace MinecraftAuthServer
 
                     double timeout = TimeSpan.FromMinutes(1).TotalMilliseconds;
                     string normalized = NormalizeMilliseconds(timeout);
-                    Execute($@"tellraw {userStr} [{{""text"":""Account not registered"",""color"":""green""}},""\n"",{{""text"":""Register within {normalized}"",""color"":""green""}},""\n"",{{""text"":""/login <passphrase>"",""color"":""green""}},""\n"",{{""text"":""<passphrase> at least 6 chars"",""color"":""green""}}]]");
+                    Tell(userStr, ("Account not registered", TellRawColors.Green), "\n", ($"Register within {normalized}", TellRawColors.Green), "\n", ("/login <passphrase>", TellRawColors.Green), "\n", ("<passphrase> at least 6 chars", TellRawColors.Green));
 
                     Task.Run(async () =>
                     {

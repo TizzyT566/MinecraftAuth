@@ -21,6 +21,51 @@ namespace MinecraftAuthServer
             public override string ToString() => _value.ToString();
         }
 
+        public sealed class TellRawColors
+        {
+            public static readonly TellRawColors Black = new("black");
+            public static readonly TellRawColors DarkBlue = new("dark_blue");
+            public static readonly TellRawColors DarkGreen = new("dark_green");
+            public static readonly TellRawColors DarkAqua = new("dark_aqua");
+            public static readonly TellRawColors DarkRed = new("dark_red");
+            public static readonly TellRawColors DarkPurple = new("dark_purple");
+            public static readonly TellRawColors Gold = new("gold");
+            public static readonly TellRawColors Gray = new("gray");
+            public static readonly TellRawColors DarkGray = new("dark_gray");
+            public static readonly TellRawColors Blue = new("blue");
+            public static readonly TellRawColors Green = new("green");
+            public static readonly TellRawColors Aqua = new("aqua");
+            public static readonly TellRawColors Red = new("red");
+            public static readonly TellRawColors LightPurple = new("light_purple");
+            public static readonly TellRawColors Yellow = new("yellow");
+            public static readonly TellRawColors White = new("white");
+
+            private readonly string _value;
+            private TellRawColors(string value) => _value = value;
+            public TellRawColors(byte R, byte G, byte B) =>
+                _value = $"#{R.ToString("X").PadLeft(2, '0')}{G.ToString("X").PadLeft(2, '0')}{B.ToString("X").PadLeft(2, '0')}";
+            public static implicit operator string(TellRawColors gm) => gm._value;
+            public override string ToString() => _value.ToString();
+        }
+
+        public class TellRawMessage
+        {
+            public string Text { get; set; }
+            public TellRawColors Color { get; set; }
+            private TellRawMessage(string text, TellRawColors? color = null)
+            {
+                Text = text.Replace("\"", "\\\"");
+                Color = color ?? TellRawColors.White;
+            }
+            public static implicit operator TellRawMessage((string text, TellRawColors color) raw) => new(raw.text, raw.color);
+            public static implicit operator TellRawMessage(string text) => new(text, TellRawColors.White);
+            public override string ToString()
+            {
+                if (Text == null || Text == "\n") return "\"\\n\"";
+                return @$"{{""text"":""{Text}"",""color"":""{Color}""}}";
+            }
+        }
+
         public sealed class Demensions
         {
             public static readonly Demensions TheNether = new("the_nether");
@@ -108,14 +153,13 @@ namespace MinecraftAuthServer
                     return;
                 }
 
-                Console.WriteLine("Launching Minecraft Server ...");
-
                 p.StartInfo.UseShellExecute = false;
                 p.StartInfo.RedirectStandardOutput = true;
                 p.StartInfo.RedirectStandardInput = true;
                 p.StartInfo.FileName = @$"{javaFolder}\bin\java.exe";
                 p.StartInfo.Arguments = $"{string.Join(" ", args)} -jar server.jar".Trim();
                 p.OutputDataReceived += Sessions.ServerEvent;
+                Console.WriteLine("Launching Minecraft Server ...");
                 p.Start();
                 p.BeginOutputReadLine();
             }
@@ -133,6 +177,19 @@ namespace MinecraftAuthServer
         {
             while (Interlocked.Exchange(ref processLock, 1) == 1) ;
             p.StandardInput.WriteLine($"execute as {user} run execute in minecraft:{w} run tp @s {x} {y} {z}");
+            Interlocked.Exchange(ref processLock, 0);
+        }
+
+        public static void Tell(string user, params TellRawMessage[] message)
+        {
+            if (message == null || message.Length == 0) return;
+            StringBuilder sb = new();
+            sb.Append($@"tellraw {user} [{message[0]}");
+            foreach (TellRawMessage trm in message.Skip(1))
+                sb.Append($@",{trm}");
+            sb.Append(']');
+            while (Interlocked.Exchange(ref processLock, 1) == 1) ;
+            p.StandardInput.WriteLine(sb.ToString());
             Interlocked.Exchange(ref processLock, 0);
         }
 
