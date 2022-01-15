@@ -4,6 +4,7 @@ using System.Diagnostics;
 
 using System.Text.RegularPatterns;
 using static System.Text.RegularPatterns.Pattern;
+using System.Net;
 
 namespace MinecraftAuthServer
 {
@@ -296,7 +297,16 @@ namespace MinecraftAuthServer
                 }
                 else
                 {
-                    WriteLine(($"{userStr}", Yellow), ($" joined [{ipStr}:{portStr}] at {position}", Blue));
+                    EndPoint? remoteEP = relay?.ClientA?.Client.RemoteEndPoint;
+                    if (remoteEP != null)
+                        WriteLine(($"{userStr}", Yellow), ($" joined from [{remoteEP}] on [{ipStr}:{portStr}] at {position}", Blue));
+                    else
+                    {
+                        // Close the connection, direct connections are not allowed
+                        relay?.Dispose();
+                        WriteLine(($"{userStr}", Yellow), ($" disconnected, Direct connections not allowed", Red));
+                        return true;
+                    }
                 }
 
                 // Prevent user from doing anything until they login
