@@ -200,11 +200,12 @@ namespace MinecraftAuthServer
             Interlocked.Exchange(ref processLock, 0);
         }
 
-        public static void GameMode(string user, GameModes gameMode)
+        public static GameModes GameMode(string user, GameModes gameMode)
         {
             while (Interlocked.Exchange(ref processLock, 1) == 1) ;
             p.StandardInput.WriteLine($"gamemode {gameMode} {user}");
             Interlocked.Exchange(ref processLock, 0);
+            return gameMode;
         }
 
         private static readonly double Day = TimeSpan.FromDays(1).TotalMilliseconds;
@@ -308,5 +309,8 @@ namespace MinecraftAuthServer
 
         public static string HexString(this byte[] ba) =>
             BitConverter.ToString(ba).Replace("-", "");
+
+        public static string Base64(this byte[] ba) =>
+            Convert.ToBase64String(ba);
     }
 }

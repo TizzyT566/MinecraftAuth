@@ -8,7 +8,6 @@ using System.Net;
 
 namespace MinecraftAuthServer
 {
-
     public static class Sessions
     {
         private static readonly Dictionary<string, Profile> profiles = new();
@@ -93,6 +92,7 @@ namespace MinecraftAuthServer
             public byte[]? passphrase;
             public CancellationTokenSource? timeOutToken;
             public TcpRelay? connection;
+            public GameModes gameMode = GameModes.Spectator;
             public static Profile Parse(byte[] bytes)
             {
                 if (bytes != null && bytes.Length == 90)
@@ -200,10 +200,13 @@ namespace MinecraftAuthServer
                 // Get player profile
                 Profile profile = profiles[user];
 
-                // 
+                // possible already logged in
                 if (profile.position == null)
                 {
-                    Tell(userStr, ("Unexpected error, Coordinates lost, Contact admin", TellRawColors.Red));
+                    if (profile.gameMode == GameModes.Survival)
+                        Tell(userStr, ("Already logged in", TellRawColors.Yellow));
+                    else
+                        Kick(userStr, "Unexpecteddd error, Coordinates lost, Contact administrator");
                     Interlocked.Exchange(ref profileLock, 0);
                     return true;
                 }
@@ -251,7 +254,7 @@ namespace MinecraftAuthServer
                     else
                     {
                         Tell(userStr, ("Wrong passphrase", TellRawColors.Red));
-                        WriteLine(($"{user} entered the wrong password:", Red), "\n", (profile.passphrase.HexString(), Green), "\n", (passBytes.HexString(), DarkRed));
+                        WriteLine(($"{user} entered the wrong password:", Red), "\n", (profile.passphrase.Base64(), Green), "\n", (passBytes.Base64(), DarkRed));
                         Interlocked.Exchange(ref profileLock, 0);
                         return true;
                     }
@@ -260,7 +263,7 @@ namespace MinecraftAuthServer
                 // teleport to prevLocation
                 Teleport(userStr, (Position)profile.position);
                 // change to survival
-                GameMode(userStr, GameModes.Survival);
+                profile.gameMode = GameMode(userStr, GameModes.Survival);
                 // clear old position
                 profile.position = null;
                 Save(user);
@@ -276,6 +279,11 @@ namespace MinecraftAuthServer
             if (data.Match(Text("["), Any, Text(" INFO]: "), Any, Text("[/"), Any, Text("] logged in with entity id"), Any))
             {
                 StringRange userStr = data.RangeOf(Text("["), Any, Text(" INFO]: ")).Between(Text("[/"), Any, Except("[", "/"), Text("] logged in with entity id"));
+
+                // Prevent user from doing anything until they login
+                GameMode(userStr, GameModes.Spectator);
+                Teleport(userStr, GenerateSpawnLocation());
+
                 StringRange ipStr = data.RangeOf(userStr.End, Text($"[/")).Between(Text(":"));
                 StringRange portStr = data.RangeOf(ipStr.End, Text(":")).Between(Text("]"));
                 int port = int.Parse(portStr);
@@ -314,10 +322,6 @@ namespace MinecraftAuthServer
                         return true;
                     }
                 }
-
-                // Prevent user from doing anything until they login
-                GameMode(userStr, GameModes.Spectator);
-                Teleport(userStr, GenerateSpawnLocation());
 
                 SpinWait.SpinUntil(() => Interlocked.Exchange(ref profileLock, 1) == 0);
                 CancellationTokenSource timeOutTokenSource = new();
