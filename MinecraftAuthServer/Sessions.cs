@@ -101,7 +101,7 @@ namespace MinecraftAuthServer
                     if ((bytes[0] & 1) > 0)
                         profile.position = Position.Parse(bytes[1..26]);
                     if ((bytes[0] & 2) > 0)
-                        profile.passphrase = bytes[26..];
+                        profile.passphrase = bytes[26..90];
                     return profile;
                 }
                 throw new Exception("Invalid Profile file");
@@ -177,6 +177,19 @@ namespace MinecraftAuthServer
                 }
                 return true;
             }
+            return false;
+        }
+
+        private static bool UserCommand(string data)
+        {
+            //StringRange beginning = data.RangeOf(Text("["), Any, Text(" INFO]: "), Any, Text(" issued server command: /"), Any);
+            //StringRange command = data.RangeOf(beginning.End, Any);
+            //string commandStr = command;
+            //if (beginning.)
+            //{
+
+            //    return true;
+            //}
             return false;
         }
 
