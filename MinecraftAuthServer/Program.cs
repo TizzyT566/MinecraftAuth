@@ -16,7 +16,7 @@ if (File.Exists("MinecraftAuth.info"))
 }
 
 // Get server passphrase
-string serverPassphrase = prevInfo[0] ?? Prompt(("Enter a server passphrase: ", Green));
+string serverPassphrase = prevInfo[0] ?? Prompt(("Enter a passphrase (leave empty for no passphrase): ", Green));
 prevInfo[0] = serverPassphrase;
 byte[]? authBytes = serverPassphrase.Length == 0 ? null : serverPassphrase.SHA512(Encoding.UTF8);
 
